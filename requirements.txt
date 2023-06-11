@@ -1,0 +1,7 @@
+streamlit
+pydicom
+Pillow
+pandas
+pylibjpeg 
+pylibjpeg-libjpeg
+python-gdcm
