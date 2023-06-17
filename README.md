@@ -16,6 +16,15 @@ To install the app, run the following command:
 pip install -r requirements.txt
 ```
 
+## Docker
+
+To run the app in Docker, run the following command:
+
+```bash
+docker build -t streamlit .
+docker run -d -p 8501:8501 streamlit
+```
+
 # How to use
 Run the following command to start the app:
 
