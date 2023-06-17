@@ -18,6 +18,8 @@ class Dinder():
             st.session_state.label: str = ""
         if "results" not in st.session_state:
             st.session_state.results: dict = {}
+        if "image" not in st.session_state:
+            st.session_state.image: Image = None
 
     def run(self) -> None:
         """
@@ -104,6 +106,7 @@ class Dinder():
         """
         uploaded_file = st.session_state.uploaded_files[st.session_state.counter]
         image = self.read_image(uploaded_file)
+        st.session_state.image = image
         width, height = image.size
         new_width = int(width * self.TARGET_HEIGHT / height)
         image = image.resize((new_width, self.TARGET_HEIGHT))
@@ -114,15 +117,22 @@ class Dinder():
             st.button("❌", key=f'no_{st.session_state.counter}', on_click=self.save_results_no)
         with right_column:
             st.button("✅", key=f'yes_{st.session_state.counter}', on_click=self.save_results_yes)
+
+    def clean_image(self) -> None:
+        """
+        Closes the image to free up memory.
+        """
+        if st.session_state.image is not None:
+            st.session_state.image.close()
         
     def read_image(self, uploaded_file):
         if uploaded_file.name.endswith(".dcm") or uploaded_file.name.endswith(".dicom"):
-            image = pydicom.dcmread(uploaded_file)
-            image = image.pixel_array
-            # normalize the image to 0-255
-            image = (image / image.max()) * 255
-            image = image.astype("uint8")
-            image = Image.fromarray(image)
+            with pydicom.dcmread(uploaded_file) as dicom_image:
+                image = dicom_image.pixel_array
+                # normalize the image to 0-255
+                image = (image / image.max()) * 255
+                image = image.astype("uint8")
+                image = Image.fromarray(image)
         else:
             image = Image.open(uploaded_file).convert("RGB")
         return image
@@ -147,6 +157,7 @@ class Dinder():
         """
         st.session_state.results[st.session_state.uploaded_files[st.session_state.counter].name] = 1
         self.increase_counter()
+        self.clean_image()
 
     def save_results_no(self) -> None:
         """
@@ -154,6 +165,7 @@ class Dinder():
         """
         st.session_state.results[st.session_state.uploaded_files[st.session_state.counter].name] = 0
         self.increase_counter()
+        self.clean_image()
 
     def download_results(self) -> None:
         """
