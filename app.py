@@ -9,7 +9,8 @@ import pydicom
 
 class Dinder():
     def __init__(self):
-        self.TARGET_HEIGHT: int = 500
+        if "target_height" not in st.session_state:
+            st.session_state.target_height: int = 500
         if "counter" not in st.session_state:
             st.session_state.counter: int = 0
         if "uploaded_files" not in st.session_state:
@@ -42,11 +43,14 @@ class Dinder():
         Shows the sidebar with options to select images, create a task, and proceed to labeling.
         """
         st.sidebar.title("Dinder")
-        st.sidebar.header("Welcome to Dinder! Tinder for quick image labeling.")
+        st.sidebar.header(
+            "Welcome to Dinder! Tinder for quick image labeling.")
 
         self.select_images()
         self.create_task()
         self.proceed_to_labeling()
+        st.slider("Adjust image height", min_value=0, max_value=2000, value=st.session_state.target_height,
+                  step=100, key=f"target_height", on_change=self.display_image)
 
     def select_images(self) -> None:
         """
@@ -57,13 +61,16 @@ class Dinder():
             "Upload images to label", accept_multiple_files=True,
             type=["png", "jpg", "jpeg", "dicom", "dcm"]
         )
+        st.session_state.results = {
+            file.name: -1 for file in st.session_state.uploaded_files}
 
     def create_task(self) -> None:
         """
         Allows the user to create a task by entering a label.
         """
         st.sidebar.subheader("Create a task")
-        st.session_state.label = st.sidebar.text_input("Enter a label for the task")
+        st.session_state.label = st.sidebar.text_input(
+            "Enter a label for the task")
 
     def proceed_to_labeling(self) -> None:
         """
@@ -108,15 +115,30 @@ class Dinder():
         image = self.read_image(uploaded_file)
         st.session_state.image = image
         width, height = image.size
-        new_width = int(width * self.TARGET_HEIGHT / height)
-        image = image.resize((new_width, self.TARGET_HEIGHT))
+        new_width = int(width * st.session_state.target_height / height)
+        image = image.resize((new_width, st.session_state.target_height))
+        title = f"{st.session_state.counter + 1}/{len(st.session_state.uploaded_files)}: {uploaded_file.name}"
+        if st.session_state.results[uploaded_file.name] == 1:
+            title += " is ✅"
+        elif st.session_state.results[uploaded_file.name] == 0:
+            title += " is ❌"
+        st.title(title)
         st.image(image)
+        self.clean_image()
 
-        left_column, right_column = st.columns(2)
-        with left_column:
-            st.button("❌", key=f'no_{st.session_state.counter}', on_click=self.save_results_no)
-        with right_column:
-            st.button("✅", key=f'yes_{st.session_state.counter}', on_click=self.save_results_yes)
+        columns = st.columns(4)
+        with columns[0]:
+            st.button(
+                "❌", key=f'no_{st.session_state.counter}', on_click=self.save_results_no)
+        with columns[1]:
+            st.button(
+                "⏮️", key=f'back_{st.session_state.counter}', on_click=self.decrease_counter)
+        with columns[2]:
+            st.button(
+                "⏭️", key=f'skip_{st.session_state.counter}', on_click=self.increase_counter)
+        with columns[3]:
+            st.button(
+                "✅", key=f'yes_{st.session_state.counter}', on_click=self.save_results_yes)
 
     def clean_image(self) -> None:
         """
@@ -124,7 +146,7 @@ class Dinder():
         """
         if st.session_state.image is not None:
             st.session_state.image.close()
-        
+
     def read_image(self, uploaded_file):
         if uploaded_file.name.endswith(".dcm") or uploaded_file.name.endswith(".dicom"):
             with pydicom.dcmread(uploaded_file) as dicom_image:
@@ -150,6 +172,15 @@ class Dinder():
             # download results as csv
             st.write("Click the button below to download the results.")
             self.download_results()
+            st.session_state.counter = 0
+
+    def decrease_counter(self) -> None:
+        """
+        Decreases the counter to move to the previous image and displays it.
+        """
+        if st.session_state.counter > 0:
+            st.session_state.counter -= 1
+        self.display_image()
 
     def save_results_yes(self) -> None:
         """
@@ -157,7 +188,6 @@ class Dinder():
         """
         st.session_state.results[st.session_state.uploaded_files[st.session_state.counter].name] = 1
         self.increase_counter()
-        self.clean_image()
 
     def save_results_no(self) -> None:
         """
@@ -165,19 +195,20 @@ class Dinder():
         """
         st.session_state.results[st.session_state.uploaded_files[st.session_state.counter].name] = 0
         self.increase_counter()
-        self.clean_image()
 
     def download_results(self) -> None:
         """
         Downloads the results as a CSV file.
         """
         # convert dictionary to dataframe
-        results_df = pd.DataFrame.from_dict(st.session_state.results, orient="index")
+        results_df = pd.DataFrame.from_dict(
+            st.session_state.results, orient="index")
         results_df.columns = [st.session_state.label]
 
         # download dataframe as csv
         csv = results_df.to_csv().encode('utf-8')
-        st.download_button('Download CSV', data=csv, file_name=f"{st.session_state.label}.csv", mime='text/csv')
+        st.download_button('Download CSV', data=csv,
+                           file_name=f"{st.session_state.label}.csv", mime='text/csv')
 
 
 if __name__ == "__main__":
