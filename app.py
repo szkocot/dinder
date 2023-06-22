@@ -49,8 +49,8 @@ class Dinder():
         self.select_images()
         self.create_task()
         self.proceed_to_labeling()
-        st.slider("Adjust image height", min_value=0, max_value=2000, value=st.session_state.target_height,
-                  step=100, key=f"target_height", on_change=self.display_image)
+        st.slider("Adjust image height", min_value=0, max_value=2000,
+                  step=100, key="target_height", on_change=self.display_image)
 
     def select_images(self) -> None:
         """
@@ -59,8 +59,12 @@ class Dinder():
         st.sidebar.subheader("Select images to label")
         st.session_state.uploaded_files = st.sidebar.file_uploader(
             "Upload images to label", accept_multiple_files=True,
-            type=["png", "jpg", "jpeg", "dicom", "dcm"]
-        )
+            type=["png", "jpg", "jpeg", "dicom", "dcm"])
+
+    def reset_results(self) -> None:
+        """
+        Resets the results when new images are uploaded.
+        """
         st.session_state.results = {
             file.name: -1 for file in st.session_state.uploaded_files}
 
@@ -78,7 +82,8 @@ class Dinder():
         """
         st.sidebar.subheader("Proceed to labeling")
         st.sidebar.write("Click the button below to proceed to labeling.")
-        self.proceed = st.sidebar.button("Proceed to labeling")
+        self.proceed = st.sidebar.button(
+            "Proceed to labeling", on_click=self.reset_results)
 
     def should_proceed(self) -> bool:
         """
