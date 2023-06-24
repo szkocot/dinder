@@ -116,6 +116,8 @@ class Dinder():
         """
         Displays the current image and buttons for labeling.
         """
+        if len(st.session_state.uploaded_files) == 0:
+            return
         uploaded_file = st.session_state.uploaded_files[st.session_state.counter]
         image = self.read_image(uploaded_file)
         st.session_state.image = image
